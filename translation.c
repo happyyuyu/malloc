@@ -107,7 +107,7 @@ int vm_unmap(uint64_t page, int number) {
 
 }
 
-uint64_t locate_helper(struct entry_t_ * temp_root, int number, int level, int * prev, uint64_t * index, int * n){
+/*uint64_t locate_helper(struct entry_t_ * temp_root, int number, int level, int * prev, uint64_t * index, int * n){
 	for (int i = 0; i< 512; i++){
 		if (!(temp_root.flags & 1)){ //this entry is unused
 				if (level == 4){
@@ -133,7 +133,7 @@ uint64_t locate_helper(struct entry_t_ * temp_root, int number, int level, int *
 		}
 	}
     return -1;
-}
+}*/
 
 uint64_t vm_locate(int number) {
 	/*struct entry_t_ * temp_root = table_root;
@@ -146,17 +146,33 @@ uint64_t vm_locate(int number) {
 			temp_root =
 		}
 	}*/
-	int * start = 0;
-  return locate_helper(table_root, number, 1, 0, start
-	);
+	int count = 0;
+	int prev = 0;
+	for (uint64_t = 0; i < 68719476736; i++){
+		if (vm_translate(i)==-1){
+			if (!prev){
+				prev = 1;
+				count++;
+			}
+			else count++;
+			if (count = number) return i;
+		}
+		else{
+			count = 0;
+			prev = 0;
+		}
+	}
+	return -1;
+	//int * start = 0;
+  //return locate_helper(table_root, number, 1, 0, start);
 }
 
 uint64_t vm_translate(uint64_t virtual_address) {
 
 	struct entry_t_ *temp_root = table_root;
 	uint64_t indices[4]; /// page: ___0__(28)___(9)___(9)___(9)___(9)
-	uint64_t indices[0] = (virtual_address <<28) >> 55;
-	uint64_t indices[1] = (virtual_address << 37 ) >> 55;
+	uint64_t indices[0] = (virtual_address << 28) >> 55;
+	uint64_t indices[1] = (virtual_address << 37) >> 55;
 	uint64_t indices[2] = (virtual_address << 46) >> 55;
 	uint64_t indices[3] = (virtual_address << 55) >> 55;
 

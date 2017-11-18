@@ -10,13 +10,15 @@ void *palloc(uint64_t number) {
 	// 3) Map the found page number (virtual) to the allocated frame address (not the frame number, but the frame address)
 	// 4) Return the virtual address of the first byte of the allocated frame
 
-	// frame = allocate_frame(...)
-	// page = vm_locate(...)
-	// vm_map(page, frame, /* one page */, /* use flags zero */);
-	// return GET_FIRST_BYTE(frame);
+	uint64_t frame = allocate_frame(...);
+	if (frame == -1) return -1;
+	uint64_t page = vm_locate(...)
+	vm_map(page, frame, /* one page */, 0);
+	return GET_FIRST_BYTE(frame);
 
 	// Dummy code: you cannot use malloc/free
-	return malloc(4196 * number);
+	//return malloc(4196 * number);
+
 }
 
 void pfree(void* address, uint64_t number) {
@@ -24,20 +26,22 @@ void pfree(void* address, uint64_t number) {
 	// 1) Unmap the page number starting at the provided address (the address is the first byte of a page)
 	// 2) Do that for the number of times provided in the parameter number
 
-	// page = GET_PAGE_NUMBER(address)
-	// frame = vm_translate(page)
+	uint64_t page = GET_PAGE_NUMBER(address)
+	uint64_t frame = vm_translate(page)
 	//
-	// vm_unmap(page)
-	// deallocate_frame(frame)
+	vm_unmap(page);
+	deallocate_frame(frame);
 
 	// Dummy code: you cannot use malloc/free
-	free(address);
+	//free(address);
 }
 
 void *kmalloc(uint64_t size) {
 	// TODO:
 	// - Implement a linked list of free chunks using only palloc()
 	// - Use the first-fit strategy to allocate a chunk
+
+
 
 	// Dummy code: you cannot use malloc/free
 	return malloc(size);
