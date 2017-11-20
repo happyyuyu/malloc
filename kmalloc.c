@@ -43,7 +43,19 @@ void *kmalloc(uint64_t size) {
 	// TODO:
 	// - Implement a linked list of free chunks using only palloc()
 	if (!start){ //create a new linked list
-
+		uint64_t number = (size/4096 + 1);
+		start = palloc(number);
+		//assigning used chunk size and magic number
+		*start = size + 2* sizeof(uint64_t);
+		*(start + 1) = MAGIC;
+		start += 2;
+		//main data content of the assigned chunk;
+		char * content = (char *)(start);
+		//start redirected to after the main data chunk
+		start = (uint64_t)(content + size);
+		//remaining memory in the chunk
+		*start = (frame * 4096 - size - 2 * sizeof(uint64_t));
+		*(start+1) = 0;
 	}
 	else { //The linked list is already created, so find the next avaliable chunk
 		//with enough space
@@ -56,12 +68,35 @@ void *kmalloc(uint64_t size) {
 		}
 		if (size + 2 * sizeof(uint64_t)) <= *temp){
 			//The chunk is large enough
-
-
+			uint64_t * next_free = *(temp + 1);
+			uint64_t current_size = *temp;
+			*temp = size + 2 * sizeof(uint64_t);
+			*(temp + 1) = MAGIC;
+			temp += 2;
+			//main data content of the assigned chunk;
+			char * content = (char *)(start);
+			//temp redirected to after the main data chunk
+			temp = (uint64_t)(content + size);
+			*temp = (current_size - size - 2 * sizeof(uint64_t));
+			if (prev) *(prev + 1) = temp;
+			*(temp + 1) = next_free;
 		}
 		else{
 			//allocate another chunk
-
+			uint64_t number = (size/4096 + 1);
+			uint64_t * new_start = palloc(number);
+			//assigning used chunk size and magic number
+			*new_start = size + 2* sizeof(uint64_t);
+			*(new_start + 1) = MAGIC;
+			new_start += 2;
+			//main data content of the assigned chunk;
+			char * content = (char *)(new_start);
+			//start redirected to after the main data chunk
+			new_start = (uint64_t)(content + size);
+			//remaining memory in the chunk
+			*new_start = (frame * 4096 - size - 2 * sizeof(uint64_t));
+			*(new_start+1) = 0;
+			*(temp + 1) = new_start;
 		}
 	}
 	// - Use the first-fit strategy to allocate a chunk
@@ -75,13 +110,20 @@ void *kmalloc(uint64_t size) {
 void *krealloc(void *address, uint64_t size) {
 	// TODO:
 	//
-
+	uint64_t * first = address - 2;
+	uint64_t former_size = *first;
+	uint64_t * next = (uint64_t*)((char*)address + former_size - 2 * sizeof(uint64_t));
 	// - If the address is becoming smaller, return the last frames that have become unused with vm_unmap() and frame_deallocate()
+	if (former_size > size){
 
+	}
 	// - If the address is becoming bigger, and is possible to allocate new contiguous pages to extend the chunk size,
+	else{
+
+	}
 	//   allocate new frames and map their pages.
 	// - If the address is becomming bigger, but it is not possible to allocate new contigous pages to extend the chunk size,
-	//   use kmallloc() to allocate a new chunk, then memcpy() to copy the original bytes to the new chunk, and return the new chunk's address.
+	//   use kmalloc() to allocate a new chunk, then memcpy() to copy the original bytes to the new chunk, and return the new chunk's address.
 	//   Before returning, use kfree() to free the old chunk.
 
 	// Dummy code: you cannot use malloc/free... or realloc
@@ -95,7 +137,11 @@ void kfree(void *address) {
 	uint64_t former_size = *first;
 	uint64_t * next = (uint64_t*)((char*)adress + former_size - 2 * sizeof(uint64_t));
 	if(*(next+1) == MAGIC){
-		//
+		//Next chunk is used
+
+	}
+	else{
+		//Next chunk is free
 
 	}
 
