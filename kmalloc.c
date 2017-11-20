@@ -56,6 +56,7 @@ void *kmalloc(uint64_t size) {
 		//remaining memory in the chunk
 		*start = (frame * 4096 - size - 2 * sizeof(uint64_t));
 		*(start+1) = 0;
+		return (uint64_t*) content;
 	}
 	else { //The linked list is already created, so find the next avaliable chunk
 		//with enough space
@@ -80,6 +81,7 @@ void *kmalloc(uint64_t size) {
 			*temp = (current_size - size - 2 * sizeof(uint64_t));
 			if (prev) *(prev + 1) = temp;
 			*(temp + 1) = next_free;
+			return (uint64_t*) content;
 		}
 		else{
 			//allocate another chunk
@@ -97,14 +99,12 @@ void *kmalloc(uint64_t size) {
 			*new_start = (frame * 4096 - size - 2 * sizeof(uint64_t));
 			*(new_start+1) = 0;
 			*(temp + 1) = new_start;
+			return (uint64_t*) content;
 		}
 	}
 	// - Use the first-fit strategy to allocate a chunk
-
-
-
 	// Dummy code: you cannot use malloc/free
-	return malloc(size);
+	//return malloc(size);
 }
 
 void *krealloc(void *address, uint64_t size) {
@@ -115,10 +115,64 @@ void *krealloc(void *address, uint64_t size) {
 	uint64_t * next = (uint64_t*)((char*)address + former_size - 2 * sizeof(uint64_t));
 	// - If the address is becoming smaller, return the last frames that have become unused with vm_unmap() and frame_deallocate()
 	if (former_size > size){
-
+		uint64_t new_start = (uint64_t)((char*) address + size);
+		*new_start = former_size - size;
+		*(new_start + 1) = *start;
+		start = new_start;
+		if (*(next+1) != MAGIC){
+			//TODO:
+			//if next chunk is free merge the two free parts
+			merge_free(*new_start, *next);
+		}
+		else{
+			//next chunk is USED
+			*first = size;
+		}
+		return address;
 	}
 	// - If the address is becoming bigger, and is possible to allocate new contiguous pages to extend the chunk size,
 	else{
+		//check if the next block is free and big enough
+		if (*(next+1)!=MAGIC && (*(next)+first) > size){
+			//the next block is free and big enough
+			*first = size;
+			//check if there is space left after reallocation
+			if (former_size + *next > size){
+				//TODO:
+				//create new free chunk
+				uint64_t * new_start = (uint64_t)((char*) address + size);
+				*new_start = former_size + *(next) - size;
+				*(new_start+1) = *(next+1);
+				//make prev point to new_start
+				uint64_t * prev = prev_finder(next);
+				*(prev+1) = new_start;
+			}
+			else{
+				//No space left after reallocation
+				if (*(next+1)){
+					//this chunk being used for expansion is not the last of free chunks
+					//change what used to point to next to *(next+1)
+					uint64_t * prev = prev_finder(next);
+					*(prev + 1) = *(next + 1);
+				}
+				else{
+					//No free chunks left after this chunk is used
+					uint64_t * prev = prev_finder(next);
+					*(prev+1) = 0;
+				}
+
+			}
+
+		}
+		else{
+			//need to allocate new 4k chunk
+			uint64_t * new_start = kmalloc(size);
+			*(new_start - 1) = MAGIC;
+			*(new_start - 2) = size;
+			memcpy(new_start, address, former_size);
+			kfree(address);
+			return new_start;
+		}
 
 	}
 	//   allocate new frames and map their pages.
@@ -127,7 +181,7 @@ void *krealloc(void *address, uint64_t size) {
 	//   Before returning, use kfree() to free the old chunk.
 
 	// Dummy code: you cannot use malloc/free... or realloc
-	return realloc(address, size);
+	//return realloc(address, size);
 }
 
 void kfree(void *address) {
@@ -137,17 +191,32 @@ void kfree(void *address) {
 	uint64_t former_size = *first;
 	uint64_t * next = (uint64_t*)((char*)adress + former_size - 2 * sizeof(uint64_t));
 	if(*(next+1) == MAGIC){
-		//Next chunk is used
-
+		//Next chunk is used, set this freed chunk to the start of the list.
+		*(first + 1) = *start;
+		start = first;
 	}
 	else{
 		//Next chunk is free
-
+		merge_free(*first,*next);
 	}
 
 
 	// - Return any frames that have become unused with vm_unmap() and frame_deallocate()
 
 	// Dummy code: you cannot use malloc/free
-	return free(address);
+	//return free(address);
+}
+
+uint64_t * prev_finder(uint64_t * current){
+	uint64_t * temp = start;
+	while (*(temp+1) && *(temp+1) != current){
+		temp = *(temp + 1);
+	}
+	return temp;
+}
+
+void merge_free(uint64_t * start, uint64_t * end){
+	uint64_t * next = *(end + 1);
+	*start += *end;
+	*(start + 1) = next;
 }

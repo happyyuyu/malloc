@@ -47,5 +47,7 @@ void *krealloc(void *address, uint64_t size);
  * @param address Address of the first allocated byte previously allocated with kmalloc.
  */
 void kfree(void *address);
+uint64_t * prev_finder(uint64_t * current);
+void merge_free(uint64_t * start, uint64_t * end);
 
 #endif /* KMALLOC_H */
