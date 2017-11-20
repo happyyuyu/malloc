@@ -2,6 +2,7 @@
 #define TRANSLATION_H
 
 #include<stdint.h>
+#include"frame.h"
 
 struct entry_t_ {
 	/// 52-bit can be used to put the address of the frame
@@ -14,8 +15,12 @@ struct entry_t_ {
 
 typedef struct entry_t_ entry;
 
+
 /// 4-level page table implementing the translation from virtual to physical
-extern void *table_root;
+extern struct entry_t_ *table_root;
+
+struct entry_t_ * mapHelper(struct entry_t_ * pointer, int number, uint64_t index);
+uint64_t unmapHelper(struct entry_t_ * pointer, int number, uint64_t index);
 
 /**
  * Maps @p number pages starting at page number @p page to consecutive frames starting at frame number @p frame,

@@ -1,17 +1,16 @@
 #include<stdio.h>
 
 #include "translation.h"
-#include<frame.h>;
 
-struct entry_t_ *table_root = NULL;
+//table_root = NULL;
 
 int vm_map(uint64_t page, uint64_t frame, int number, uint16_t flags) {
 	struct entry_t_ *temp_root = table_root;
 	uint64_t indices[4]; /// page: ___0__(28)___(9)___(9)___(9)___(9)
-	uint64_t indices[0] = (page >> 27) & 511;
-	uint64_t indices[1] = (page >> 18 ) & 511;
-	uint64_t indices[2] = (page >> 9) >> 511;
-	uint64_t indices[3] = page >> 511;
+	indices[0] = (page >> 27) & 511;
+	indices[1] = (page >> 18 ) & 511;
+	indices[2] = (page >> 9) & 511;
+	indices[3] = page & 511;
 	int allocation;
 
 	//create first table
@@ -20,7 +19,7 @@ int vm_map(uint64_t page, uint64_t frame, int number, uint16_t flags) {
 		allocation = allocate_frame(number);
 		if (allocation != -1){
 			table_root = &memory[0] + allocation * 4096;
-			memset(table_root,0,512 * sizeof(entry_t_));
+			memset(table_root,0,512 * sizeof(struct entry_t_));
 			temp_root = mapHelper(table_root,number,indices[0]);
 			if (!temp_root) return 0;
 		}
@@ -44,7 +43,7 @@ int vm_map(uint64_t page, uint64_t frame, int number, uint16_t flags) {
 	return 1;
 }
 
-uint64_t mapHelper(uint64_t pointer, int number, uint64_t index){
+struct entry_t_ * mapHelper(struct entry_t_ * pointer, int number, uint64_t index){
 	struct entry_t_ *temp_root;
 	if (pointer[index].flags & 1){
 		return pointer[index].address;
@@ -53,7 +52,7 @@ uint64_t mapHelper(uint64_t pointer, int number, uint64_t index){
 		int allocation = allocate_frame(number);
 		if (allocation==-1) return 0;
 		temp_root = &memory[0] + allocation;
-		memset(temp_root,0,512 * sizeof(entry_t_));
+		memset(temp_root,0,512 * sizeof(struct entry_t_));
 		pointer[index].address = (uint64_t)temp_root;
 		pointer[index].flags = pointer[index].flags | 1;
 		return (uint64_t)temp_root;
@@ -62,8 +61,8 @@ uint64_t mapHelper(uint64_t pointer, int number, uint64_t index){
 	return 0;
 }
 
-uint64_t unmapHelper(uint64_t pointer, uint64_t index){
-	struct entry_t_ *temp_root;
+uint64_t unmapHelper(struct entry_t_ * pointer, int number, uint64_t index){
+	//struct entry_t_ *temp_root;
 	if (pointer[index].flags & 1){
 		return pointer[index].address;
 	}
@@ -80,10 +79,10 @@ int vm_unmap(uint64_t page, int number) {
 	//QUESTION: SHOULD WE SET every entry we traversed the flag to unused?
 	struct entry_t_ *temp_root = table_root;
 	uint64_t indices[4]; /// page: ___0__(28)___(9)___(9)___(9)___(9)
-	uint64_t indices[0] = (page<<28) >> 55;
-	uint64_t indices[1] = (page << 37 ) >> 55;
-	uint64_t indices[2] = (page << 46) >> 55;
-	uint64_t indices[3] = (page << 55) >> 55;
+  indices[0] = (page<<28) >> 55;
+	indices[1] = (page << 37 ) >> 55;
+	indices[2] = (page << 46) >> 55;
+	indices[3] = (page << 55) >> 55;
 	int allocation;
 	//create first table
 	if (table_root == NULL){
@@ -148,14 +147,14 @@ uint64_t vm_locate(int number) {
 	}*/
 	int count = 0;
 	int prev = 0;
-	for (uint64_t = 0; i < 68719476736; i++){
+	for (uint64_t i = 0; i < 68719476736; i++){
 		if (vm_translate(i)==-1){
 			if (!prev){
 				prev = 1;
 				count++;
 			}
 			else count++;
-			if (count = number) return i;
+			if (count == number) return i;
 		}
 		else{
 			count = 0;
@@ -171,13 +170,13 @@ uint64_t vm_translate(uint64_t virtual_address) {
 
 	struct entry_t_ *temp_root = table_root;
 	uint64_t indices[4]; /// page: ___0__(28)___(9)___(9)___(9)___(9)
-	uint64_t indices[0] = (virtual_address << 28) >> 55;
-	uint64_t indices[1] = (virtual_address << 37) >> 55;
-	uint64_t indices[2] = (virtual_address << 46) >> 55;
-	uint64_t indices[3] = (virtual_address << 55) >> 55;
+	indices[0] = (virtual_address << 28) >> 55;
+	indices[1] = (virtual_address << 37) >> 55;
+	indices[2] = (virtual_address << 46) >> 55;
+	indices[3] = (virtual_address << 55) >> 55;
 
 	for (int i=0;i<4;i++){
-		if (temp_root[indices[i]].flags & 1 == 0) return -1;
+		if ((temp_root[indices[i]].flags & 1) == 0) return -1;
 		if (i == 3){
 			return temp_root[indices[i]].address;
 		}

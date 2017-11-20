@@ -15,9 +15,10 @@ void *palloc(uint64_t number) {
 
 	uint64_t frame = allocate_frame(number);
 	if (frame == -1) return -1;
-	uint64_t page = vm_locate(number)
-	vm_map(page, frame, 1, 0);
-	return GET_FIRST_BYTE(frame);
+	uint64_t page = vm_locate(number);
+	int sucess = vm_map(page, frame, number, 0);
+	if (!sucess) return -1;
+	return memory + 4096 * frame;
 
 	// Dummy code: you cannot use malloc/free
 	//return malloc(4196 * number);
@@ -29,11 +30,12 @@ void pfree(void* address, uint64_t number) {
 	// 1) Unmap the page number starting at the provided address (the address is the first byte of a page)
 	// 2) Do that for the number of times provided in the parameter number
 
-	uint64_t page = GET_PAGE_NUMBER(address)
-	uint64_t frame = vm_translate(page)
+	//uint64_t page = GET_PAGE_NUMBER(address)
+	//uint64_t frame = vm_translate(address);
 	//
-	vm_unmap(page);
-	deallocate_frame(frame);
+	//vm_unmap(page);
+	uint64_t frame = ((uint64_t)address - (uint64_t)memory) / 4096;
+	deallocate_frame(frame, number);
 
 	// Dummy code: you cannot use malloc/free
 	//free(address);
@@ -54,7 +56,7 @@ void *kmalloc(uint64_t size) {
 		//start redirected to after the main data chunk
 		start = (uint64_t)(content + size);
 		//remaining memory in the chunk
-		*start = (frame * 4096 - size - 2 * sizeof(uint64_t));
+		*start = (number * 4096 - size - 2 * sizeof(uint64_t));
 		*(start+1) = 0;
 		return (uint64_t*) content;
 	}
@@ -67,7 +69,7 @@ void *kmalloc(uint64_t size) {
 			prev = temp;
 			temp = * (temp + 1);
 		}
-		if (size + 2 * sizeof(uint64_t)) <= *temp){
+		if ((size + 2 * sizeof(uint64_t)) <= *temp){
 			//The chunk is large enough
 			uint64_t * next_free = *(temp + 1);
 			uint64_t current_size = *temp;
@@ -96,7 +98,7 @@ void *kmalloc(uint64_t size) {
 			//start redirected to after the main data chunk
 			new_start = (uint64_t)(content + size);
 			//remaining memory in the chunk
-			*new_start = (frame * 4096 - size - 2 * sizeof(uint64_t));
+			*new_start = (number * 4096 - size - 2 * sizeof(uint64_t));
 			*(new_start+1) = 0;
 			*(temp + 1) = new_start;
 			return (uint64_t*) content;
@@ -115,14 +117,14 @@ void *krealloc(void *address, uint64_t size) {
 	uint64_t * next = (uint64_t*)((char*)address + former_size - 2 * sizeof(uint64_t));
 	// - If the address is becoming smaller, return the last frames that have become unused with vm_unmap() and frame_deallocate()
 	if (former_size > size){
-		uint64_t new_start = (uint64_t)((char*) address + size);
+		uint64_t * new_start = (uint64_t)((char*) address + size);
 		*new_start = former_size - size;
 		*(new_start + 1) = *start;
 		start = new_start;
 		if (*(next+1) != MAGIC){
 			//TODO:
 			//if next chunk is free merge the two free parts
-			merge_free(*new_start, *next);
+			merge_free(new_start, next);
 		}
 		else{
 			//next chunk is USED
@@ -189,7 +191,7 @@ void kfree(void *address) {
 	// - Make the space used by the address free
 	uint64_t * first = address - 2;
 	uint64_t former_size = *first;
-	uint64_t * next = (uint64_t*)((char*)adress + former_size - 2 * sizeof(uint64_t));
+	uint64_t * next = (uint64_t*)((char*)address + former_size - 2 * sizeof(uint64_t));
 	if(*(next+1) == MAGIC){
 		//Next chunk is used, set this freed chunk to the start of the list.
 		*(first + 1) = *start;
@@ -197,7 +199,7 @@ void kfree(void *address) {
 	}
 	else{
 		//Next chunk is free
-		merge_free(*first,*next);
+		merge_free(first,next);
 	}
 
 

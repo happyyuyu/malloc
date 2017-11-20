@@ -2,6 +2,8 @@
 #define KMALLOC_H
 
 #include<stdint.h>
+#include"frame.h"
+#include"translation.h"
 
 /**
  * Allocate @p number pages/frames of memory.
